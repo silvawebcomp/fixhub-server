@@ -1,7 +1,5 @@
 const authService = require("../services/authService");
 
-const { generateToken } = require("../utils/jwt");
-
 async function register(req, res) {
 
     try {
@@ -16,15 +14,19 @@ async function register(req, res) {
 
         } = req.body;
 
-        const user = await authService.register(
+            const result = await authService.register({
 
-            name,
+                name,
 
-            email,
+                email,
 
-            password
+                password,
 
-        );
+    });
+
+res.status(201).json(result);
+
+return;
 
         const token = generateToken(user);
 
@@ -60,23 +62,17 @@ async function login(req, res) {
 
         } = req.body;
 
-        const user = await authService.login(
+        const result = await authService.login({
 
-            email,
+    email,
 
-            password
+    password,
 
-        );
+});
 
-        const token = generateToken(user);
+res.json(result);
 
-        res.json({
-
-            token,
-
-            user,
-
-        });
+return;
 
     } catch (error) {
 
