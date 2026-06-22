@@ -1,4 +1,5 @@
 const express = require("express");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const {
 
@@ -13,6 +14,8 @@ const {
 } = require("../controllers/repairController");
 
 const router = express.Router();
+
+router.use(authMiddleware);
 
 router.get("/", getRepairs);
 

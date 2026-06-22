@@ -6,6 +6,8 @@ const cors = require("cors");
 const repairRoutes = require("./routes/repairRoutes");
 const authRoutes = require("./routes/authRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const customerRoutes = require("./routes/customerRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");
 
 const app = express();
 
@@ -28,6 +30,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/repairs", repairRoutes);
 
 app.use("/api/dashboard", dashboardRoutes);
+
+app.use("/api/customers", customerRoutes);
+
+app.use("/api/inventory", inventoryRoutes);
 
 const PORT = process.env.PORT || 5000;
 

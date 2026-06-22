@@ -6,6 +6,12 @@ async function getRepairs(req, res) {
 
         const repairs = await prisma.repair.findMany({
 
+            where: {
+
+                userId: req.user.id,
+
+            },
+
             orderBy: {
 
                 createdAt: "desc",
@@ -44,8 +50,6 @@ async function createRepair(req, res) {
 
             notes,
 
-            userId,
-
         } = req.body;
 
         const repair = await prisma.repair.create({
@@ -60,7 +64,7 @@ async function createRepair(req, res) {
 
                 notes,
 
-                userId,
+                userId: req.user.id,
 
             },
 
@@ -100,11 +104,13 @@ async function updateRepair(req, res) {
 
         } = req.body;
 
-        const repair = await prisma.repair.update({
+        const updated = await prisma.repair.updateMany({
 
             where: {
 
                 id,
+
+                userId: req.user.id,
 
             },
 
@@ -117,6 +123,28 @@ async function updateRepair(req, res) {
                 status,
 
                 notes,
+
+            },
+
+        });
+
+        if (updated.count === 0) {
+
+            return res.status(404).json({
+
+                message: "Repair not found",
+
+            });
+
+        }
+
+        const repair = await prisma.repair.findFirst({
+
+            where: {
+
+                id,
+
+                userId: req.user.id,
 
             },
 
@@ -144,15 +172,27 @@ async function deleteRepair(req, res) {
 
         const id = Number(req.params.id);
 
-        await prisma.repair.delete({
+        const deleted = await prisma.repair.deleteMany({
 
             where: {
 
                 id,
 
+                userId: req.user.id,
+
             },
 
         });
+
+        if (deleted.count === 0) {
+
+            return res.status(404).json({
+
+                message: "Repair not found",
+
+            });
+
+        }
 
         res.json({
 

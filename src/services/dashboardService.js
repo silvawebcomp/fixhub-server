@@ -1,6 +1,6 @@
 const prisma = require("../lib/prisma");
 
-async function getDashboardStats() {
+async function getDashboardStats(userId) {
 
     const [
 
@@ -14,15 +14,41 @@ async function getDashboardStats() {
 
     ] = await Promise.all([
 
-        prisma.repair.count(),
+        prisma.repair.count({
 
-        prisma.customer.count(),
+            where: {
 
-        prisma.inventory.count(),
+                userId,
+
+            },
+
+        }),
+
+        prisma.customer.count({
+
+            where: {
+
+                userId,
+
+            },
+
+        }),
+
+        prisma.inventory.count({
+
+            where: {
+
+                userId,
+
+            },
+
+        }),
 
         prisma.repair.count({
 
             where: {
+
+                userId,
 
                 status: {
 

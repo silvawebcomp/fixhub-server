@@ -4,7 +4,7 @@ async function getDashboardStats(req, res) {
 
     try {
 
-        const stats = await dashboardService.getDashboardStats();
+        const stats = await dashboardService.getDashboardStats(req.user.id);
 
         res.json(stats);
 
