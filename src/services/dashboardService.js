@@ -54,11 +54,17 @@ async function getDashboardStats(userId) {
 
                     in: [
 
-                        "Pending",
+                        "Received",
 
-                        "In Progress",
+                        "Diagnosing",
 
-                        "Waiting Parts",
+                        "Awaiting Approval",
+
+                        "Awaiting Parts",
+
+                        "Repairing",
+
+                        "Ready",
 
                     ],
 

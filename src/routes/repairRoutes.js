@@ -5,6 +5,8 @@ const {
 
     getRepairs,
 
+    getRepair,
+
     createRepair,
 
     updateRepair,
@@ -18,6 +20,8 @@ const router = express.Router();
 router.use(authMiddleware);
 
 router.get("/", getRepairs);
+
+router.get("/:id", getRepair);
 
 router.post("/", createRepair);
 
