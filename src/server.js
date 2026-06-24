@@ -8,6 +8,7 @@ const authRoutes = require("./routes/authRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const customerRoutes = require("./routes/customerRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
+const trackingRoutes = require("./routes/trackingRoutes");
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/tracking", trackingRoutes);
 app.use("/api/repairs", repairRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/customers", customerRoutes);
