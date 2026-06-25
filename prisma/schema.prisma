@@ -1,63 +1,48 @@
 generator client {
-
   provider = "prisma-client-js"
-
 }
 
 datasource db {
-
   provider = "postgresql"
-
   url      = env("DATABASE_URL")
-
 }
 
 model User {
-
-  id         Int         @id @default(autoincrement())
-
-  name       String
-
-  email      String      @unique
-
-  password   String
-
-  createdAt  DateTime    @default(now())
-
-  repairs    Repair[]
-
-  customers  Customer[]
-
-  inventory  Inventory[]
-
+  id        Int         @id @default(autoincrement())
+  name      String
+  email     String      @unique
+  password  String
+  createdAt DateTime    @default(now())
+  customers Customer[]
+  inventory Inventory[]
+  repairs   Repair[]
 }
 
 model Repair {
-
   id                 Int                   @id @default(autoincrement())
-  ticketNumber       String?               @unique
   customer           String
+  device             String
+  status             String
+  notes              String?
+  createdAt          DateTime              @default(now())
+  userId             Int
+  ticketNumber       String?               @unique
   customerPhone      String?
   customerEmail      String?
-  device             String
   deviceBrand        String?
   deviceModel        String?
   serialNumber       String?
   issue              String?
-  status             String                @default("Received")
   priority           String                @default("Normal")
   assignedTechnician String?
   estimatedCost      Float?
   finalCost          Float?
   dueDate            DateTime?
   completedAt        DateTime?
-  notes              String?
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  userId             Int
+  updatedAt          DateTime              @default(now()) @updatedAt
+  invoice            Invoice?
   user               User                  @relation(fields: [userId], references: [id])
   statusHistory      RepairStatusHistory[]
-
 }
 
 model RepairStatusHistory {
@@ -72,37 +57,54 @@ model RepairStatusHistory {
 }
 
 model Customer {
-
-  id         Int       @id @default(autoincrement())
-
-  name       String
-
-  phone      String
-
-  email      String?
-
-  createdAt  DateTime  @default(now())
-
-  userId     Int
-
-  user       User      @relation(fields: [userId], references: [id])
-
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String
+  email     String?
+  createdAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Inventory {
+  id        Int      @id @default(autoincrement())
+  name      String
+  quantity  Int
+  price     Float
+  createdAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+}
 
-  id         Int       @id @default(autoincrement())
+model Invoice {
+  id            Int           @id @default(autoincrement())
+  invoiceNumber String        @unique
+  repairId      Int           @unique
+  labourCost    Float         @default(0)
+  partsCost     Float         @default(0)
+  discount      Float         @default(0)
+  tax           Float         @default(0)
+  subtotal      Float
+  total         Float
+  amountPaid    Float         @default(0)
+  balance       Float
+  paymentMethod String?
+  paymentStatus String        @default("Pending")
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now()) @updatedAt
+  repair        Repair        @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  items         InvoiceItem[]
+}
 
-  name       String
+model InvoiceItem {
+  id          Int     @id @default(autoincrement())
+  invoiceId   Int
+  description String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
-  quantity   Int
-
-  price      Float
-
-  createdAt  DateTime  @default(now())
-
-  userId     Int
-
-  user       User      @relation(fields: [userId], references: [id])
-
+  @@index([invoiceId])
 }

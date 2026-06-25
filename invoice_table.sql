@@ -1,0 +1,48 @@
+CREATE TABLE IF NOT EXISTS "Invoice" (
+
+    "id" SERIAL PRIMARY KEY,
+
+    "invoiceNumber" TEXT NOT NULL UNIQUE,
+
+    "repairId" INTEGER NOT NULL UNIQUE,
+
+    "labourCost" DOUBLE PRECISION NOT NULL DEFAULT 0,
+
+    "partsCost" DOUBLE PRECISION NOT NULL DEFAULT 0,
+
+    "discount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+
+    "tax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+
+    "subtotal" DOUBLE PRECISION NOT NULL,
+
+    "total" DOUBLE PRECISION NOT NULL,
+
+    "amountPaid" DOUBLE PRECISION NOT NULL DEFAULT 0,
+
+    "balance" DOUBLE PRECISION NOT NULL,
+
+    "paymentMethod" TEXT,
+
+    "paymentStatus" TEXT NOT NULL DEFAULT 'Pending',
+
+    "notes" TEXT,
+
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE "Invoice"
+DROP CONSTRAINT IF EXISTS "Invoice_repairId_fkey";
+
+ALTER TABLE "Invoice"
+ADD CONSTRAINT "Invoice_repairId_fkey"
+
+FOREIGN KEY ("repairId")
+
+REFERENCES "Repair"("id")
+
+ON DELETE CASCADE
+
+ON UPDATE CASCADE;
