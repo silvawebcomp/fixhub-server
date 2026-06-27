@@ -16,6 +16,7 @@ model User {
   customers Customer[]
   inventory Inventory[]
   repairs   Repair[]
+  invoices  Invoice[]
 }
 
 model Repair {
@@ -80,6 +81,7 @@ model Invoice {
   id            Int           @id @default(autoincrement())
   invoiceNumber String        @unique
   repairId      Int           @unique
+  userId        Int
   labourCost    Float         @default(0)
   partsCost     Float         @default(0)
   discount      Float         @default(0)
@@ -94,7 +96,11 @@ model Invoice {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @default(now()) @updatedAt
   repair        Repair        @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id])
   items         InvoiceItem[]
+  payments      Payment[]
+
+  @@index([userId, createdAt])
 }
 
 model InvoiceItem {
@@ -107,4 +113,18 @@ model InvoiceItem {
   invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  invoiceId Int
+  amount    Float
+  method    String
+  reference String?
+  notes     String?
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, paidAt])
 }

@@ -12,6 +12,8 @@ async function getDashboardStats(userId) {
 
         activeRepairs,
 
+        invoiceSummary,
+
     ] = await Promise.all([
 
         prisma.repair.count({
@@ -74,6 +76,32 @@ async function getDashboardStats(userId) {
 
         }),
 
+        prisma.invoice.aggregate({
+
+            where: {
+
+                userId,
+
+            },
+
+            _count: {
+
+                _all: true,
+
+            },
+
+            _sum: {
+
+                total: true,
+
+                amountPaid: true,
+
+                balance: true,
+
+            },
+
+        }),
+
     ]);
 
     return {
@@ -85,6 +113,14 @@ async function getDashboardStats(userId) {
         customers,
 
         inventoryItems,
+
+        totalInvoices: invoiceSummary._count._all,
+
+        invoiceRevenue: invoiceSummary._sum.total || 0,
+
+        paymentsReceived: invoiceSummary._sum.amountPaid || 0,
+
+        outstandingBalance: invoiceSummary._sum.balance || 0,
 
     };
 
