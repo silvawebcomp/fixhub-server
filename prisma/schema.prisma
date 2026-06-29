@@ -17,6 +17,7 @@ model User {
   inventory Inventory[]
   repairs   Repair[]
   invoices  Invoice[]
+  notifications NotificationLog[]
 }
 
 model Repair {
@@ -44,6 +45,7 @@ model Repair {
   invoice            Invoice?
   user               User                  @relation(fields: [userId], references: [id])
   statusHistory      RepairStatusHistory[]
+  notifications      NotificationLog[]
 }
 
 model RepairStatusHistory {
@@ -127,4 +129,21 @@ model Payment {
   invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId, paidAt])
+}
+
+model NotificationLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  repairId  Int?
+  channel   String
+  recipient String
+  subject   String?
+  message   String
+  status    String   @default("Prepared")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  repair    Repair?  @relation(fields: [repairId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([repairId, createdAt])
 }
