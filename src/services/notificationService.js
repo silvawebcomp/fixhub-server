@@ -115,39 +115,57 @@ async function createNotificationLog(userId, data) {
         await getRepairForUser(userId, repairId);
     }
 
-    return prisma.notificationLog.create({
-        data: {
-            userId,
-            repairId,
-            channel,
-            recipient,
-            subject: cleanText(data.subject),
-            message,
-            status,
-        },
-        include: {
-            repair: true,
-        },
-    });
+    try {
+        return await prisma.notificationLog.create({
+            data: {
+                userId,
+                repairId,
+                channel,
+                recipient,
+                subject: cleanText(data.subject),
+                message,
+                status,
+            },
+            include: {
+                repair: true,
+            },
+        });
+    } catch (error) {
+        if (error.code === "P2021" || error.code === "P2022") {
+            throw new Error(
+                "Communication logs are not ready yet. Run the latest database migration."
+            );
+        }
+
+        throw error;
+    }
 }
 
 async function getNotificationLogs(userId, repairId) {
-    return prisma.notificationLog.findMany({
-        where: {
-            userId,
-            ...(repairId
-                ? {
-                      repairId: Number(repairId),
-                  }
-                : {}),
-        },
-        include: {
-            repair: true,
-        },
-        orderBy: {
-            createdAt: "desc",
-        },
-    });
+    try {
+        return await prisma.notificationLog.findMany({
+            where: {
+                userId,
+                ...(repairId
+                    ? {
+                          repairId: Number(repairId),
+                      }
+                    : {}),
+            },
+            include: {
+                repair: true,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+    } catch (error) {
+        if (error.code === "P2021" || error.code === "P2022") {
+            return [];
+        }
+
+        throw error;
+    }
 }
 
 function buildLaunchUrls({ channel, recipient, subject, message }) {

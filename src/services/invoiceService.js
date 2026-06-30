@@ -213,15 +213,23 @@ async function createInvoice(userId, data) {
 }
 
 async function getInvoices(userId) {
-    return prisma.invoice.findMany({
-        where: {
-            userId,
-        },
-        include: invoiceInclude(),
-        orderBy: {
-            createdAt: "desc",
-        },
-    });
+    try {
+        return await prisma.invoice.findMany({
+            where: {
+                userId,
+            },
+            include: invoiceInclude(),
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+    } catch (error) {
+        if (error.code === "P2021" || error.code === "P2022") {
+            return [];
+        }
+
+        throw error;
+    }
 }
 
 async function getInvoice(userId, id) {

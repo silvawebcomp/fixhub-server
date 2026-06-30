@@ -18,6 +18,7 @@ model User {
   repairs   Repair[]
   invoices  Invoice[]
   notifications NotificationLog[]
+  stockMovements StockMovement[]
 }
 
 model Repair {
@@ -70,13 +71,41 @@ model Customer {
 }
 
 model Inventory {
-  id        Int      @id @default(autoincrement())
-  name      String
-  quantity  Int
-  price     Float
-  createdAt DateTime @default(now())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  id           Int             @id @default(autoincrement())
+  name         String
+  quantity     Int
+  price        Float
+  sku          String?
+  category     String?
+  supplier     String?
+  location     String?
+  reorderLevel Int             @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @default(now()) @updatedAt
+  userId       Int
+  user         User            @relation(fields: [userId], references: [id])
+  movements    StockMovement[]
+
+  @@index([userId, category])
+  @@index([userId, sku])
+}
+
+model StockMovement {
+  id          Int       @id @default(autoincrement())
+  inventoryId Int
+  userId      Int
+  type        String
+  quantity    Int
+  previousQty Int
+  newQty      Int
+  unitCost    Float?
+  reason      String?
+  createdAt   DateTime  @default(now())
+  inventory   Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([inventoryId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model Invoice {

@@ -5,9 +5,13 @@ const {
 
     getInventory,
 
+    getInventorySummary,
+
     createInventoryItem,
 
     updateInventoryItem,
+
+    adjustInventoryItem,
 
     deleteInventoryItem,
 
@@ -19,9 +23,13 @@ router.use(authMiddleware);
 
 router.get("/", getInventory);
 
+router.get("/summary", getInventorySummary);
+
 router.post("/", createInventoryItem);
 
 router.put("/:id", updateInventoryItem);
+
+router.post("/:id/adjust", adjustInventoryItem);
 
 router.delete("/:id", deleteInventoryItem);
 
