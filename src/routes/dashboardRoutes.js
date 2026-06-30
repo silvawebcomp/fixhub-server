@@ -5,6 +5,8 @@ const {
 
     getDashboardStats,
 
+    getBusinessInsights,
+
 } = require("../controllers/dashboardController");
 
 const router = express.Router();
@@ -16,6 +18,14 @@ router.get(
     "/stats",
 
     getDashboardStats
+
+);
+
+router.get(
+
+    "/insights",
+
+    getBusinessInsights
 
 );
 

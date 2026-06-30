@@ -132,9 +132,19 @@ async function createNotificationLog(userId, data) {
         });
     } catch (error) {
         if (error.code === "P2021" || error.code === "P2022") {
-            throw new Error(
-                "Communication logs are not ready yet. Run the latest database migration."
-            );
+            return {
+                id: Date.now() * -1,
+                userId,
+                repairId,
+                channel,
+                recipient,
+                subject: cleanText(data.subject),
+                message,
+                status,
+                createdAt: new Date().toISOString(),
+                repair: null,
+                persisted: false,
+            };
         }
 
         throw error;

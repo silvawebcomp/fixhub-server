@@ -22,8 +22,24 @@ async function getDashboardStats(req, res) {
 
 }
 
+async function getBusinessInsights(req, res) {
+    try {
+        const insights = await dashboardService.getBusinessInsights(req.user.id);
+
+        res.json(insights);
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Failed to load business insights",
+        });
+    }
+}
+
 module.exports = {
 
     getDashboardStats,
+
+    getBusinessInsights,
 
 };
