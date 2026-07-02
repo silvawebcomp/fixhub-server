@@ -56,6 +56,8 @@ async function register({
 
             password: hashedPassword,
 
+            role: "Owner",
+
         },
 
     });
@@ -65,6 +67,8 @@ async function register({
         id: user.id,
 
         email: user.email,
+
+        role: user.role,
 
     });
 
@@ -79,6 +83,8 @@ async function register({
             name: user.name,
 
             email: user.email,
+
+            role: user.role,
 
         },
 
@@ -138,6 +144,8 @@ async function login({
 
         email: user.email,
 
+        role: user.role,
+
     });
 
     return {
@@ -151,6 +159,8 @@ async function login({
             name: user.name,
 
             email: user.email,
+
+            role: user.role,
 
         },
 

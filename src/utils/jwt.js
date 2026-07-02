@@ -12,6 +12,8 @@ function generateToken(user) {
 
             email: user.email,
 
+            role: user.role,
+
         },
 
         SECRET,

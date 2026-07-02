@@ -12,13 +12,20 @@ model User {
   name      String
   email     String      @unique
   password  String
+  role      String      @default("Owner")
+  workspaceOwnerId Int?
   createdAt DateTime    @default(now())
+  workspaceOwner User?  @relation("WorkspaceMembers", fields: [workspaceOwnerId], references: [id])
+  workspaceMembers User[] @relation("WorkspaceMembers")
   customers Customer[]
   inventory Inventory[]
   repairs   Repair[]
   invoices  Invoice[]
   notifications NotificationLog[]
   stockMovements StockMovement[]
+
+  @@index([workspaceOwnerId])
+  @@index([role])
 }
 
 model Repair {

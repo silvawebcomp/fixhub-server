@@ -11,6 +11,7 @@ const inventoryRoutes = require("./routes/inventoryRoutes");
 const trackingRoutes = require("./routes/trackingRoutes");
 const invoiceRoutes = require("./routes/invoiceRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const teamRoutes = require("./routes/teamRoutes");
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/repairs", repairRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/team", teamRoutes);
 
 const PORT = process.env.PORT || 5000;
 
