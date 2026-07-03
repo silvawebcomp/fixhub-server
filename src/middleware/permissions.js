@@ -19,24 +19,14 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-/*
-|--------------------------------------------------------------------------
-| Invoice Routes
-|--------------------------------------------------------------------------
-|
-| Permissions are now centralized inside:
-| src/middleware/permissions.js
-|
-*/
-
-// Get all invoices
+// View invoices
 router.get(
     "/",
     invoiceUsers,
     getAll
 );
 
-// Get a single invoice
+// View one invoice
 router.get(
     "/:id",
     invoiceUsers,
