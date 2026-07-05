@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const repairService = require("../services/repairService");
+const prisma = require("../lib/prisma");
 
 const REPAIR_STATUSES = [
     "Received",

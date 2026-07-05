@@ -1,7 +1,11 @@
 const express = require("express");
 
 const authMiddleware = require("../middleware/authMiddleware");
-const requireRole = require("../middleware/requireRole");
+
+const {
+    managers,
+} = require("../middleware/permissions");
+
 const {
     createMember,
     deleteMember,
@@ -10,13 +14,52 @@ const {
 } = require("../controllers/teamController");
 
 const router = express.Router();
-const canManageTeam = requireRole(["Owner", "Admin"]);
 
 router.use(authMiddleware);
 
-router.get("/", getTeam);
-router.post("/", canManageTeam, createMember);
-router.put("/:id", canManageTeam, updateMember);
-router.delete("/:id", canManageTeam, deleteMember);
+/*
+|--------------------------------------------------------------------------
+| Team Routes
+|--------------------------------------------------------------------------
+|
+| Permissions are centralized in:
+| src/middleware/permissions.js
+|
+| Permission Matrix
+|
+| View Team ............. Any authenticated user
+| Create Member ......... Owner, Admin
+| Update Member ......... Owner, Admin
+| Delete Member ......... Owner, Admin
+|
+|--------------------------------------------------------------------------
+*/
+
+// View team members
+router.get(
+    "/",
+    getTeam
+);
+
+// Create team member
+router.post(
+    "/",
+    managers,
+    createMember
+);
+
+// Update team member
+router.put(
+    "/:id",
+    managers,
+    updateMember
+);
+
+// Delete team member
+router.delete(
+    "/:id",
+    managers,
+    deleteMember
+);
 
 module.exports = router;

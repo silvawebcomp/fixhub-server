@@ -1,5 +1,11 @@
 const express = require("express");
+
 const authMiddleware = require("../middleware/authMiddleware");
+
+const {
+    customerManagers,
+    managers,
+} = require("../middleware/permissions");
 
 const {
 
@@ -17,12 +23,42 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-router.get("/", getCustomers);
+/*
+|--------------------------------------------------------------------------
+| Customer Routes
+|--------------------------------------------------------------------------
+|
+| Permissions are centralized in:
+| src/middleware/permissions.js
+|
+*/
 
-router.post("/", createCustomer);
+// View customers
+router.get(
+    "/",
+    customerManagers,
+    getCustomers
+);
 
-router.put("/:id", updateCustomer);
+// Create customer
+router.post(
+    "/",
+    customerManagers,
+    createCustomer
+);
 
-router.delete("/:id", deleteCustomer);
+// Update customer
+router.put(
+    "/:id",
+    customerManagers,
+    updateCustomer
+);
+
+// Delete customer
+router.delete(
+    "/:id",
+    managers,
+    deleteCustomer
+);
 
 module.exports = router;

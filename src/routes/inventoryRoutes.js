@@ -1,5 +1,12 @@
 const express = require("express");
+
 const authMiddleware = require("../middleware/authMiddleware");
+
+const {
+    inventoryUsers,
+    inventoryManagers,
+    ownerOnly,
+} = require("../middleware/permissions");
 
 const {
 
@@ -21,16 +28,56 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-router.get("/", getInventory);
+/*
+|--------------------------------------------------------------------------
+| Inventory Routes
+|--------------------------------------------------------------------------
+|
+| Permissions are centralized in:
+| src/middleware/permissions.js
+|
+*/
 
-router.get("/summary", getInventorySummary);
+// View inventory
+router.get(
+    "/",
+    inventoryUsers,
+    getInventory
+);
 
-router.post("/", createInventoryItem);
+// View inventory summary
+router.get(
+    "/summary",
+    inventoryUsers,
+    getInventorySummary
+);
 
-router.put("/:id", updateInventoryItem);
+// Create inventory item
+router.post(
+    "/",
+    inventoryManagers,
+    createInventoryItem
+);
 
-router.post("/:id/adjust", adjustInventoryItem);
+// Update inventory item
+router.put(
+    "/:id",
+    inventoryManagers,
+    updateInventoryItem
+);
 
-router.delete("/:id", deleteInventoryItem);
+// Adjust inventory quantity
+router.post(
+    "/:id/adjust",
+    inventoryManagers,
+    adjustInventoryItem
+);
+
+// Delete inventory item
+router.delete(
+    "/:id",
+    ownerOnly,
+    deleteInventoryItem
+);
 
 module.exports = router;
