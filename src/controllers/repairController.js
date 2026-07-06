@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const repairService = require("../services/repairService");
+const prisma = require("../lib/prisma");
 
 const REPAIR_STATUSES = [
     "Received",
@@ -99,15 +99,15 @@ function validateRepair(body) {
 
 async function getRepairs(req, res) {
     try {
-        const repairs = await repairService.getRepairs(req.user.id);
+        const repairs = await prisma.repair.findMany({
+            where: { userId: req.user.id },
+            orderBy: { updatedAt: "desc" },
+        });
 
-        return res.json(repairs);
+        res.json(repairs);
     } catch (error) {
         console.error(error);
-
-        return res.status(500).json({
-            message: "Failed to fetch repairs",
-        });
+        res.status(500).json({ message: "Failed to fetch repairs" });
     }
 }
 

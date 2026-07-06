@@ -11,6 +11,23 @@ async function getRepairs(userId) {
     });
 }
 
+async function getRepair(id, userId) {
+    return prisma.repair.findFirst({
+        where: {
+            id,
+            userId,
+        },
+        include: {
+            statusHistory: {
+                orderBy: {
+                    createdAt: "desc",
+                },
+            },
+        },
+    });
+}
+
 module.exports = {
     getRepairs,
+    getRepair,
 };
