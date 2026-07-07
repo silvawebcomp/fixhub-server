@@ -1,5 +1,4 @@
 const inventoryService = require("../services/inventoryService");
-const asyncHandler = require("../middleware/asyncHandler");
 
 async function getInventory(req, res) {
     try {
@@ -122,10 +121,10 @@ async function deleteInventoryItem(req, res) {
 }
 
 module.exports = {
-    getInventory: asyncHandler(getInventory),
-    getInventorySummary: asyncHandler(getInventorySummary),
-    createInventoryItem: asyncHandler(createInventoryItem),
-    updateInventoryItem: asyncHandler(updateInventoryItem),
-    adjustInventoryItem: asyncHandler(adjustInventoryItem),
-    deleteInventoryItem: asyncHandler(deleteInventoryItem),
+    getInventory,
+    getInventorySummary,
+    createInventoryItem,
+    updateInventoryItem,
+    adjustInventoryItem,
+    deleteInventoryItem,
 };

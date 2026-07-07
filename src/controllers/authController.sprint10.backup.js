@@ -1,5 +1,5 @@
 const authService = require("../services/authService");
-const asyncHandler = require("../middleware/asyncHandler");
+
 async function register(req, res) {
     try {
         const {
@@ -43,6 +43,6 @@ async function login(req, res) {
 }
 
 module.exports = {
-    register: asyncHandler(register),
-    login: asyncHandler(login),
+    register,
+    login,
 };

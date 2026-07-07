@@ -1,5 +1,4 @@
 const customerService = require("../services/customerService");
-const asyncHandler = require("../middleware/asyncHandler");
 
 async function getCustomers(req, res) {
 
@@ -160,8 +159,13 @@ async function deleteCustomer(req, res) {
 }
 
 module.exports = {
-    getCustomers: asyncHandler(getCustomers),
-    createCustomer: asyncHandler(createCustomer),
-    updateCustomer: asyncHandler(updateCustomer),
-    deleteCustomer: asyncHandler(deleteCustomer),
+
+    getCustomers,
+
+    createCustomer,
+
+    updateCustomer,
+
+    deleteCustomer,
+
 };

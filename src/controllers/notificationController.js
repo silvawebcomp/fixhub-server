@@ -5,57 +5,41 @@ const {
     buildLaunchUrls,
 } = require("../services/notificationService");
 
+const asyncHandler = require("../middleware/asyncHandler");
+
 async function getDraft(req, res) {
-    try {
-        const draft = await getNotificationDraft(
-            req.user.id,
-            req.params.repairId,
-            req.query.template
-        );
+    const draft = await getNotificationDraft(
+        req.user.id,
+        req.params.repairId,
+        req.query.template
+    );
 
-        return res.json(draft);
-    } catch (error) {
-        console.error(error);
-
-        return res.status(404).json({
-            message: error.message,
-        });
-    }
+    return res.json(draft);
 }
 
 async function getLogs(req, res) {
-    try {
-        const logs = await getNotificationLogs(req.user.id, req.query.repairId);
+    const logs = await getNotificationLogs(
+        req.user.id,
+        req.query.repairId
+    );
 
-        return res.json(logs);
-    } catch (error) {
-        console.error(error);
-
-        return res.status(500).json({
-            message: "Unable to fetch notification logs.",
-        });
-    }
+    return res.json(logs);
 }
 
 async function createLog(req, res) {
-    try {
-        const log = await createNotificationLog(req.user.id, req.body);
+    const log = await createNotificationLog(
+        req.user.id,
+        req.body
+    );
 
-        return res.status(201).json({
-            ...log,
-            launchUrl: buildLaunchUrls(log),
-        });
-    } catch (error) {
-        console.error(error);
-
-        return res.status(400).json({
-            message: error.message,
-        });
-    }
+    return res.status(201).json({
+        ...log,
+        launchUrl: buildLaunchUrls(log),
+    });
 }
 
 module.exports = {
-    getDraft,
-    getLogs,
-    createLog,
+    getDraft: asyncHandler(getDraft),
+    getLogs: asyncHandler(getLogs),
+    createLog: asyncHandler(createLog),
 };

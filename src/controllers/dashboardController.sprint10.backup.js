@@ -1,5 +1,4 @@
 const dashboardService = require("../services/dashboardService");
-const asyncHandler = require("../middleware/asyncHandler");
 
 async function getDashboardStats(req, res) {
 
@@ -38,6 +37,9 @@ async function getBusinessInsights(req, res) {
 }
 
 module.exports = {
-    getDashboardStats: asyncHandler(getDashboardStats),
-    getBusinessInsights: asyncHandler(getBusinessInsights),
+
+    getDashboardStats,
+
+    getBusinessInsights,
+
 };

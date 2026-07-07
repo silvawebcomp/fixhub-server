@@ -1,117 +1,75 @@
+const asyncHandler = require("../middleware/asyncHandler");
 const repairService = require("../services/repairService");
 
 async function getRepairs(req, res) {
-    try {
-        const repairs =
-            await repairService.getRepairs(req.user.id);
+    const repairs = await repairService.getRepairs(
+        req.user.id
+    );
 
-        return res.json(repairs);
-    } catch (error) {
-        console.error(error);
-
-        return res.status(500).json({
-            message: "Failed to fetch repairs",
-        });
-    }
+    return res.json(repairs);
 }
 
 async function getRepair(req, res) {
-    try {
-        const repair =
-            await repairService.getRepair(
-                Number(req.params.id),
-                req.user.id
-            );
+    const repair = await repairService.getRepair(
+        Number(req.params.id),
+        req.user.id
+    );
 
-        if (!repair) {
-            return res.status(404).json({
-                message: "Repair not found",
-            });
-        }
-
-        return res.json(repair);
-    } catch (error) {
-        console.error(error);
-
-        return res.status(500).json({
-            message: "Failed to fetch repair",
+    if (!repair) {
+        return res.status(404).json({
+            message: "Repair not found",
         });
     }
+
+    return res.json(repair);
 }
 
 async function createRepair(req, res) {
-    try {
-        const repair =
-            await repairService.createRepair(
-                req.body,
-                req.user.id
-            );
+    const repair = await repairService.createRepair(
+        req.body,
+        req.user.id
+    );
 
-        return res.status(201).json(repair);
-    } catch (error) {
-        console.error(error);
-
-        return res.status(400).json({
-            message: error.message,
-        });
-    }
+    return res.status(201).json(repair);
 }
 
 async function updateRepair(req, res) {
-    try {
-        const repair =
-            await repairService.updateRepair(
-                Number(req.params.id),
-                req.body,
-                req.user.id
-            );
+    const repair = await repairService.updateRepair(
+        Number(req.params.id),
+        req.body,
+        req.user.id
+    );
 
-        if (!repair) {
-            return res.status(404).json({
-                message: "Repair not found",
-            });
-        }
-
-        return res.json(repair);
-    } catch (error) {
-        console.error(error);
-
-        return res.status(400).json({
-            message: error.message,
+    if (!repair) {
+        return res.status(404).json({
+            message: "Repair not found",
         });
     }
+
+    return res.json(repair);
 }
 
 async function deleteRepair(req, res) {
-    try {
-        const deleted =
-            await repairService.deleteRepair(
-                Number(req.params.id),
-                req.user.id
-            );
+    const deleted = await repairService.deleteRepair(
+        Number(req.params.id),
+        req.user.id
+    );
 
-        if (!deleted) {
-            return res.status(404).json({
-                message: "Repair not found",
-            });
-        }
-
-        return res.json({
-            message: "Repair deleted",
-        });
-    } catch (error) {
-        console.error(error);
-
-        return res.status(500).json({
-            message: "Failed to delete repair",
+    if (!deleted) {
+        return res.status(404).json({
+            message: "Repair not found",
         });
     }
+
+    return res.json({
+        message: "Repair deleted",
+    });
 }
 
 module.exports = {
-    getRepairs,
-    getRepair,
-    createRepair,
-    updateRepair,
-    deleteRepair,
+    getRepairs: asyncHandler(getRepairs),
+    getRepair: asyncHandler(getRepair),
+    createRepair: asyncHandler(createRepair),
+    updateRepair: asyncHandler(updateRepair),
+    deleteRepair: asyncHandler(deleteRepair),
 };

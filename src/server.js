@@ -12,6 +12,7 @@ const trackingRoutes = require("./routes/trackingRoutes");
 const invoiceRoutes = require("./routes/invoiceRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const teamRoutes = require("./routes/teamRoutes");
+const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
 
@@ -51,6 +52,8 @@ app.use("/api/repairs", repairRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/team", teamRoutes);
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
