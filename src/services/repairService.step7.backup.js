@@ -20,7 +20,9 @@ function repairInclude() {
 
 async function getRepairs(userId) {
     return prisma.repair.findMany({
-        where: { userId },
+        where: {
+            userId,
+        },
         include: repairInclude(),
         orderBy: {
             updatedAt: "desc",
@@ -68,7 +70,7 @@ async function createRepair(body, userId) {
                 create: {
                     status: repairData.status,
                     note:
-                        body.statusNote?.trim() ||
+                        repairData.notes ||
                         "Repair ticket created",
                 },
             },
@@ -77,68 +79,11 @@ async function createRepair(body, userId) {
     });
 }
 
-async function updateRepair(id, body, userId) {
-    const repairData = validateRepair(body);
-
-    const existing = await repairExists(id, userId);
-
-    if (!existing) {
-        return null;
-    }
-
-    const statusChanged =
-        existing.status !== repairData.status;
-
-    const completedAt =
-        repairData.status === "Collected"
-            ? existing.completedAt || new Date()
-            : null;
-
-    return prisma.repair.update({
-        where: {
-            id,
-        },
-        data: {
-            ...repairData,
-            completedAt,
-            ...(statusChanged
-                ? {
-                      statusHistory: {
-                          create: {
-                              status: repairData.status,
-                              note:
-                                  body.statusNote?.trim() ||
-                                  null,
-                          },
-                      },
-                  }
-                : {}),
-        },
-        include: repairInclude(),
-    });
-}
-
-async function deleteRepair(id, userId) {
-    const existing = await repairExists(id, userId);
-
-    if (!existing) {
-        return null;
-    }
-
-    await prisma.repair.delete({
-        where: {
-            id,
-        },
-    });
-
-    return true;
-}
-
 module.exports = {
+    validateRepair,
+    makeTicketNumber,
     getRepairs,
     getRepair,
     repairExists,
     createRepair,
-    updateRepair,
-    deleteRepair,
 };

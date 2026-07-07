@@ -119,19 +119,12 @@ async function updateRepair(id, body, userId) {
 }
 
 async function deleteRepair(id, userId) {
-    const existing = await repairExists(id, userId);
-
-    if (!existing) {
-        return null;
-    }
-
-    await prisma.repair.delete({
+    return prisma.repair.deleteMany({
         where: {
             id,
+            userId,
         },
     });
-
-    return true;
 }
 
 module.exports = {

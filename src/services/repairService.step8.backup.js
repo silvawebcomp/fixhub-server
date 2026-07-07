@@ -20,7 +20,9 @@ function repairInclude() {
 
 async function getRepairs(userId) {
     return prisma.repair.findMany({
-        where: { userId },
+        where: {
+            userId,
+        },
         include: repairInclude(),
         orderBy: {
             updatedAt: "desc",
@@ -68,7 +70,7 @@ async function createRepair(body, userId) {
                 create: {
                     status: repairData.status,
                     note:
-                        body.statusNote?.trim() ||
+                        repairData.notes ||
                         "Repair ticket created",
                 },
             },
@@ -107,7 +109,7 @@ async function updateRepair(id, body, userId) {
                           create: {
                               status: repairData.status,
                               note:
-                                  body.statusNote?.trim() ||
+                                  repairData.notes ||
                                   null,
                           },
                       },
@@ -118,27 +120,12 @@ async function updateRepair(id, body, userId) {
     });
 }
 
-async function deleteRepair(id, userId) {
-    const existing = await repairExists(id, userId);
-
-    if (!existing) {
-        return null;
-    }
-
-    await prisma.repair.delete({
-        where: {
-            id,
-        },
-    });
-
-    return true;
-}
-
 module.exports = {
+    validateRepair,
+    makeTicketNumber,
     getRepairs,
     getRepair,
     repairExists,
     createRepair,
     updateRepair,
-    deleteRepair,
 };
