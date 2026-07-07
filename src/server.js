@@ -1,4 +1,5 @@
 require("dotenv").config();
+require("./config/env");
 
 const express = require("express");
 const cors = require("cors");
@@ -15,6 +16,9 @@ const teamRoutes = require("./routes/teamRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
+
+const requestLogger = require("./middleware/requestLogger");
+const apiResponse = require("./middleware/apiResponse");
 
 const allowedOrigins = [
     process.env.CLIENT_URL,
