@@ -17,6 +17,7 @@ model User {
   createdAt DateTime    @default(now())
   workspaceOwner User?  @relation("WorkspaceMembers", fields: [workspaceOwnerId], references: [id])
   workspaceMembers User[] @relation("WorkspaceMembers")
+  branches  Branch[]
   customers Customer[]
   inventory Inventory[]
   repairs   Repair[]
@@ -28,6 +29,24 @@ model User {
   @@index([role])
 }
 
+model Branch {
+  id          Int         @id @default(autoincrement())
+  name        String
+  address     String?
+  phone       String?
+  managerName String?
+  isDefault   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now()) @updatedAt
+  userId      Int
+  user        User        @relation(fields: [userId], references: [id])
+  repairs     Repair[]
+  inventory   Inventory[]
+
+  @@unique([userId, name])
+  @@index([userId, isDefault])
+}
+
 model Repair {
   id                 Int                   @id @default(autoincrement())
   customer           String
@@ -36,6 +55,7 @@ model Repair {
   notes              String?
   createdAt          DateTime              @default(now())
   userId             Int
+  branchId           Int?
   ticketNumber       String?               @unique
   customerPhone      String?
   customerEmail      String?
@@ -52,8 +72,11 @@ model Repair {
   updatedAt          DateTime              @default(now()) @updatedAt
   invoice            Invoice?
   user               User                  @relation(fields: [userId], references: [id])
+  branch             Branch?               @relation(fields: [branchId], references: [id], onDelete: SetNull)
   statusHistory      RepairStatusHistory[]
   notifications      NotificationLog[]
+
+  @@index([userId, branchId])
 }
 
 model RepairStatusHistory {
@@ -90,11 +113,14 @@ model Inventory {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @default(now()) @updatedAt
   userId       Int
+  branchId     Int?
   user         User            @relation(fields: [userId], references: [id])
+  branch       Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
   movements    StockMovement[]
 
   @@index([userId, category])
   @@index([userId, sku])
+  @@index([userId, branchId])
 }
 
 model StockMovement {

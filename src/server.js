@@ -13,6 +13,7 @@ const trackingRoutes = require("./routes/trackingRoutes");
 const invoiceRoutes = require("./routes/invoiceRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const teamRoutes = require("./routes/teamRoutes");
+const branchRoutes = require("./routes/branchRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -56,6 +57,7 @@ app.use("/api/repairs", repairRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/team", teamRoutes);
+app.use("/api/branches", branchRoutes);
 
 app.use(errorHandler);
 
@@ -70,3 +72,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+

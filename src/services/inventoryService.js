@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const branchService = require("./branchService");
 
 const MOVEMENT_TYPES = ["Stock In", "Stock Out", "Adjustment", "Used for Repair"];
 
@@ -34,6 +35,7 @@ function parseInteger(value, fieldName, options = {}) {
 
 function itemInclude() {
     return {
+        branch: true,
         movements: {
             orderBy: {
                 createdAt: "desc",
@@ -41,6 +43,20 @@ function itemInclude() {
             take: 8,
         },
     };
+}
+
+function branchFilter(branchId) {
+    if (branchId === "" || branchId === null || branchId === undefined) {
+        return {};
+    }
+
+    const parsed = Number(branchId);
+
+    return Number.isInteger(parsed)
+        ? {
+              branchId: parsed,
+          }
+        : {};
 }
 
 function normalizeItem(data) {
@@ -62,10 +78,11 @@ function normalizeItem(data) {
     };
 }
 
-async function getInventory(userId) {
+async function getInventory(userId, filters = {}) {
     return prisma.inventory.findMany({
         where: {
             userId,
+            ...branchFilter(filters.branchId),
         },
         include: itemInclude(),
         orderBy: {
@@ -74,10 +91,11 @@ async function getInventory(userId) {
     });
 }
 
-async function getInventorySummary(userId) {
+async function getInventorySummary(userId, filters = {}) {
     const items = await prisma.inventory.findMany({
         where: {
             userId,
+            ...branchFilter(filters.branchId),
         },
         select: {
             quantity: true,
@@ -111,11 +129,13 @@ async function getInventorySummary(userId) {
 
 async function createInventoryItem(data, userId) {
     const item = normalizeItem(data);
+    const branchId = await branchService.resolveBranchId(userId, data.branchId);
 
     return prisma.$transaction(async (tx) => {
         const created = await tx.inventory.create({
             data: {
                 ...item,
+                branchId,
                 userId,
             },
         });
@@ -144,6 +164,7 @@ async function createInventoryItem(data, userId) {
 
 async function updateInventoryItem(id, userId, data) {
     const item = normalizeItem(data);
+    const branchId = await branchService.resolveBranchId(userId, data.branchId);
 
     const existing = await prisma.inventory.findFirst({
         where: {
@@ -161,7 +182,10 @@ async function updateInventoryItem(id, userId, data) {
             where: {
                 id,
             },
-            data: item,
+            data: {
+                ...item,
+                branchId,
+            },
         });
 
         if (existing.quantity !== updated.quantity) {

@@ -3,7 +3,10 @@ const repairService = require("../services/repairService");
 
 async function getRepairs(req, res) {
     const repairs = await repairService.getRepairs(
-        req.user.id
+        req.user.id,
+        {
+            branchId: req.query.branchId,
+        }
     );
 
     return res.json(repairs);

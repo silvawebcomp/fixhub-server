@@ -3,7 +3,9 @@ const asyncHandler = require("../middleware/asyncHandler");
 
 async function getInventory(req, res) {
     try {
-        const items = await inventoryService.getInventory(req.user.id);
+        const items = await inventoryService.getInventory(req.user.id, {
+            branchId: req.query.branchId,
+        });
 
         res.json(items);
     } catch (error) {
@@ -17,7 +19,9 @@ async function getInventory(req, res) {
 
 async function getInventorySummary(req, res) {
     try {
-        const summary = await inventoryService.getInventorySummary(req.user.id);
+        const summary = await inventoryService.getInventorySummary(req.user.id, {
+            branchId: req.query.branchId,
+        });
 
         res.json(summary);
     } catch (error) {

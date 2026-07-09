@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const branchService = require("./branchService");
 
 const {
     validateRepair,
@@ -10,6 +11,7 @@ const {
 
 function repairInclude() {
     return {
+        branch: true,
         statusHistory: {
             orderBy: {
                 createdAt: "desc",
@@ -18,9 +20,26 @@ function repairInclude() {
     };
 }
 
-async function getRepairs(userId) {
+function branchFilter(branchId) {
+    if (branchId === "" || branchId === null || branchId === undefined) {
+        return {};
+    }
+
+    const parsed = Number(branchId);
+
+    return Number.isInteger(parsed)
+        ? {
+              branchId: parsed,
+          }
+        : {};
+}
+
+async function getRepairs(userId, filters = {}) {
     return prisma.repair.findMany({
-        where: { userId },
+        where: {
+            userId,
+            ...branchFilter(filters.branchId),
+        },
         include: repairInclude(),
         orderBy: {
             updatedAt: "desc",
@@ -54,10 +73,12 @@ async function repairExists(id, userId) {
 
 async function createRepair(body, userId) {
     const repairData = validateRepair(body);
+    const branchId = await branchService.resolveBranchId(userId, body.branchId);
 
     return prisma.repair.create({
         data: {
             ...repairData,
+            branchId,
             ticketNumber: makeTicketNumber(),
             completedAt:
                 repairData.status === "Collected"
@@ -79,6 +100,7 @@ async function createRepair(body, userId) {
 
 async function updateRepair(id, body, userId) {
     const repairData = validateRepair(body);
+    const branchId = await branchService.resolveBranchId(userId, body.branchId);
 
     const existing = await repairExists(id, userId);
 
@@ -100,6 +122,7 @@ async function updateRepair(id, body, userId) {
         },
         data: {
             ...repairData,
+            branchId,
             completedAt,
             ...(statusChanged
                 ? {
