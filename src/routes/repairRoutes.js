@@ -1,6 +1,7 @@
 const express = require("express");
 
 const authMiddleware = require("../middleware/authMiddleware");
+const uploadRepair = require("../middleware/uploadRepair");
 
 const {
     repairUsers,
@@ -58,6 +59,7 @@ router.get(
 router.post(
     "/",
     customerManagers,
+    uploadRepair,
     createRepair
 );
 
@@ -65,6 +67,7 @@ router.post(
 router.put(
     "/:id",
     repairEditors,
+    uploadRepair,
     updateRepair
 );
 

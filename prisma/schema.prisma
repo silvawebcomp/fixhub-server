@@ -24,6 +24,7 @@ model User {
   invoices  Invoice[]
   notifications NotificationLog[]
   stockMovements StockMovement[]
+  auditLogs AuditLog[]
 
   @@index([workspaceOwnerId])
   @@index([role])
@@ -53,6 +54,7 @@ model Repair {
   device             String
   status             String
   notes              String?
+  attachment         String?
   createdAt          DateTime              @default(now())
   userId             Int
   branchId           Int?
@@ -91,13 +93,14 @@ model RepairStatusHistory {
 }
 
 model Customer {
-  id        Int      @id @default(autoincrement())
-  name      String
-  phone     String
-  email     String?
-  createdAt DateTime @default(now())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  id           Int      @id @default(autoincrement())
+  name         String
+  phone        String
+  email        String?
+  profilePhoto String?
+  createdAt    DateTime @default(now())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model Inventory {
@@ -157,6 +160,7 @@ model Invoice {
   paymentMethod String?
   paymentStatus String        @default("Pending")
   notes         String?
+  attachment    String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @default(now()) @updatedAt
   repair        Repair        @relation(fields: [repairId], references: [id], onDelete: Cascade)
@@ -208,4 +212,18 @@ model NotificationLog {
 
   @@index([userId, createdAt])
   @@index([repairId, createdAt])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String
+  entity    String
+  entityId  Int?
+  details   Json?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
 }

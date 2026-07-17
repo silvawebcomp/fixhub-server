@@ -1,7 +1,8 @@
 const express = require("express");
+const audit = require("../middleware/audit");
 
 const authMiddleware = require("../middleware/authMiddleware");
-
+const uploadInvoice = require("../middleware/uploadInvoice");
 const {
     invoiceUsers,
     ownerOnly,
@@ -47,6 +48,8 @@ router.get(
 router.post(
     "/",
     invoiceUsers,
+    uploadInvoice,
+    audit("CREATE", "Invoice"),
     create
 );
 
@@ -54,6 +57,7 @@ router.post(
 router.post(
     "/:id/payments",
     invoiceUsers,
+    audit("PAYMENT", "Invoice"),
     recordPayment
 );
 
@@ -61,6 +65,7 @@ router.post(
 router.delete(
     "/:id",
     ownerOnly,
+    audit("DELETE", "Invoice"),
     remove
 );
 

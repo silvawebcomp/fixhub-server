@@ -1,6 +1,10 @@
 const asyncHandler = require("../middleware/asyncHandler");
 const repairService = require("../services/repairService");
 
+function uploadPath(req) {
+    return req.file ? `/uploads/repairs/${req.file.filename}` : undefined;
+}
+
 async function getRepairs(req, res) {
     const repairs = await repairService.getRepairs(
         req.user.id,
@@ -29,7 +33,10 @@ async function getRepair(req, res) {
 
 async function createRepair(req, res) {
     const repair = await repairService.createRepair(
-        req.body,
+        {
+            ...req.body,
+            attachment: uploadPath(req),
+        },
         req.user.id
     );
 
@@ -39,7 +46,10 @@ async function createRepair(req, res) {
 async function updateRepair(req, res) {
     const repair = await repairService.updateRepair(
         Number(req.params.id),
-        req.body,
+        {
+            ...req.body,
+            attachment: uploadPath(req),
+        },
         req.user.id
     );
 

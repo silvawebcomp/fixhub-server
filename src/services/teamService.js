@@ -1,7 +1,12 @@
 const bcrypt = require("bcryptjs");
 const prisma = require("../lib/prisma");
 
-const TEAM_ROLES = ["Owner", "Admin", "Technician", "Front Desk"];
+const TEAM_ROLES = [
+    "Owner",
+    "Manager",
+    "Technician",
+    "Receptionist",
+];
 
 function cleanText(value) {
     if (typeof value !== "string") {
@@ -60,11 +65,15 @@ async function createTeamMember(workspaceOwnerId, data) {
     const role = cleanText(data.role);
 
     if (!name || !email || !password) {
-        throw new Error("Name, email, and password are required.");
+        throw new Error(
+            "Name, email, and password are required."
+        );
     }
 
     if (password.length < 6) {
-        throw new Error("Password must be at least 6 characters.");
+        throw new Error(
+            "Password must be at least 6 characters."
+        );
     }
 
     validateRole(role);
@@ -76,10 +85,15 @@ async function createTeamMember(workspaceOwnerId, data) {
     });
 
     if (existing) {
-        throw new Error("A user with this email already exists.");
+        throw new Error(
+            "A user with this email already exists."
+        );
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(
+        password,
+        10
+    );
 
     const user = await prisma.user.create({
         data: {
@@ -94,8 +108,13 @@ async function createTeamMember(workspaceOwnerId, data) {
     return publicUser(user);
 }
 
-async function updateTeamMember(workspaceOwnerId, memberId, data) {
+async function updateTeamMember(
+    workspaceOwnerId,
+    memberId,
+    data
+) {
     const role = cleanText(data.role);
+
     validateRole(role);
 
     const member = await prisma.user.findFirst({
@@ -121,7 +140,10 @@ async function updateTeamMember(workspaceOwnerId, memberId, data) {
     return publicUser(updated);
 }
 
-async function deleteTeamMember(workspaceOwnerId, memberId) {
+async function deleteTeamMember(
+    workspaceOwnerId,
+    memberId
+) {
     return prisma.user.deleteMany({
         where: {
             id: Number(memberId),

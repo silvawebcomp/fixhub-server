@@ -8,10 +8,17 @@ const {
 
 const asyncHandler = require("../middleware/asyncHandler");
 
+function uploadPath(req) {
+    return req.file ? `/uploads/invoices/${req.file.filename}` : undefined;
+}
+
 async function create(req, res) {
     const invoice = await createInvoice(
         req.user.id,
-        req.body
+        {
+            ...req.body,
+            attachment: uploadPath(req),
+        }
     );
 
     return res.status(201).json(invoice);

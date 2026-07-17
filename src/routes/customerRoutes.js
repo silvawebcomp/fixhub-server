@@ -1,4 +1,5 @@
 const express = require("express");
+const uploadCustomer = require("../middleware/uploadCustomer");
 
 const authMiddleware = require("../middleware/authMiddleware");
 
@@ -44,6 +45,7 @@ router.get(
 router.post(
     "/",
     customerManagers,
+    uploadCustomer,
     createCustomer
 );
 
@@ -51,6 +53,7 @@ router.post(
 router.put(
     "/:id",
     customerManagers,
+    uploadCustomer,
     updateCustomer
 );
 

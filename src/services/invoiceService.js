@@ -37,6 +37,14 @@ function cleanText(value) {
 }
 
 function normalizeItems(items) {
+    if (typeof items === "string") {
+        try {
+            items = JSON.parse(items);
+        } catch (error) {
+            throw new Error("Invoice items must be valid JSON.");
+        }
+    }
+
     if (!Array.isArray(items) || items.length === 0) {
         throw new Error("At least one invoice item is required.");
     }
@@ -188,6 +196,7 @@ async function createInvoice(userId, data) {
                 balance: totals.balance,
                 paymentStatus: totals.paymentStatus,
                 paymentMethod,
+                attachment: cleanText(data.attachment),
                 notes: cleanText(data.notes),
                 items: {
                     create: items,

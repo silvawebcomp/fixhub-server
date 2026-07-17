@@ -1,12 +1,20 @@
 function requireRole(roles) {
     return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({
-                message: "You do not have permission to perform this action.",
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required.",
             });
         }
 
-        return next();
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: "Insufficient permissions.",
+            });
+        }
+
+        next();
     };
 }
 

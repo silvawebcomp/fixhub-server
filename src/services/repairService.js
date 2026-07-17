@@ -80,6 +80,7 @@ async function createRepair(body, userId) {
             ...repairData,
             branchId,
             ticketNumber: makeTicketNumber(),
+            attachment: body.attachment,
             completedAt:
                 repairData.status === "Collected"
                     ? new Date()
@@ -123,6 +124,11 @@ async function updateRepair(id, body, userId) {
         data: {
             ...repairData,
             branchId,
+            ...(body.attachment
+                ? {
+                      attachment: body.attachment,
+                  }
+                : {}),
             completedAt,
             ...(statusChanged
                 ? {

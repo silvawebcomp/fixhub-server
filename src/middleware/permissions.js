@@ -2,11 +2,14 @@ const requireRole = require("./requireRole");
 
 /*
 |--------------------------------------------------------------------------
-| Centralized Permission Groups
+| FixHub Role Matrix
 |--------------------------------------------------------------------------
 |
-| All application routes should import permissions from this file.
-| This ensures authorization rules are defined in one place.
+| Roles:
+| Owner
+| Manager
+| Technician
+| Receptionist
 |
 */
 
@@ -16,56 +19,70 @@ const ownerOnly = requireRole([
 
 const managers = requireRole([
     "Owner",
-    "Admin",
+    "Manager",
 ]);
 
-const repairEditors = requireRole([
+const technicians = requireRole([
     "Owner",
-    "Admin",
+    "Manager",
     "Technician",
+]);
+
+const reception = requireRole([
+    "Owner",
+    "Manager",
+    "Receptionist",
 ]);
 
 const repairUsers = requireRole([
     "Owner",
-    "Admin",
+    "Manager",
     "Technician",
-    "Front Desk",
+    "Receptionist",
+]);
+
+const repairEditors = requireRole([
+    "Owner",
+    "Manager",
+    "Technician",
 ]);
 
 const customerManagers = requireRole([
     "Owner",
-    "Admin",
-    "Front Desk",
+    "Manager",
+    "Receptionist",
 ]);
 
 const inventoryUsers = requireRole([
     "Owner",
-    "Admin",
+    "Manager",
     "Technician",
 ]);
 
 const inventoryManagers = requireRole([
     "Owner",
-    "Admin",
+    "Manager",
 ]);
 
 const invoiceUsers = requireRole([
     "Owner",
-    "Admin",
-    "Front Desk",
+    "Manager",
+    "Receptionist",
 ]);
 
 const notificationUsers = requireRole([
     "Owner",
-    "Admin",
-    "Front Desk",
+    "Manager",
+    "Receptionist",
 ]);
 
 module.exports = {
     ownerOnly,
     managers,
-    repairEditors,
+    technicians,
+    reception,
     repairUsers,
+    repairEditors,
     customerManagers,
     inventoryUsers,
     inventoryManagers,
