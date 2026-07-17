@@ -8,6 +8,79 @@ const {
 
 } = require("../utils/jwt");
 
+function isMissingColumnError(error) {
+    return error?.code === "P2022" ||
+        /column .* does not exist/i.test(error?.message || "");
+}
+
+function normalizeUser(user) {
+    if (!user) {
+        return null;
+    }
+
+    return {
+        ...user,
+        role: user.role || "Owner",
+        workspaceOwnerId: user.workspaceOwnerId || null,
+    };
+}
+
+async function findUserByEmail(email) {
+    try {
+        return normalizeUser(
+            await prisma.user.findUnique({
+                where: {
+                    email,
+                },
+            })
+        );
+    } catch (error) {
+        if (!isMissingColumnError(error)) {
+            throw error;
+        }
+
+        const rows = await prisma.$queryRaw`
+            SELECT "id", "name", "email", "password", "createdAt"
+            FROM "User"
+            WHERE "email" = ${email}
+            LIMIT 1
+        `;
+
+        return normalizeUser(rows[0]);
+    }
+}
+
+async function createOwnerUser({
+    name,
+    email,
+    password,
+}) {
+    try {
+        return normalizeUser(
+            await prisma.user.create({
+                data: {
+                    name,
+                    email,
+                    password,
+                    role: "Owner",
+                },
+            })
+        );
+    } catch (error) {
+        if (!isMissingColumnError(error)) {
+            throw error;
+        }
+
+        const rows = await prisma.$queryRaw`
+            INSERT INTO "User" ("name", "email", "password", "createdAt")
+            VALUES (${name}, ${email}, ${password}, CURRENT_TIMESTAMP)
+            RETURNING "id", "name", "email", "password", "createdAt"
+        `;
+
+        return normalizeUser(rows[0]);
+    }
+}
+
 async function register({
 
     name,
@@ -18,15 +91,7 @@ async function register({
 
 }) {
 
-    const existingUser = await prisma.user.findUnique({
-
-        where: {
-
-            email,
-
-        },
-
-    });
+    const existingUser = await findUserByEmail(email);
 
     if (existingUser) {
 
@@ -46,20 +111,10 @@ async function register({
 
     );
 
-    const user = await prisma.user.create({
-
-        data: {
-
-            name,
-
-            email,
-
-            password: hashedPassword,
-
-            role: "Owner",
-
-        },
-
+    const user = await createOwnerUser({
+        name,
+        email,
+        password: hashedPassword,
     });
 
     const token = generateToken({
@@ -100,15 +155,7 @@ async function login({
 
 }) {
 
-    const user = await prisma.user.findUnique({
-
-        where: {
-
-            email,
-
-        },
-
-    });
+    const user = await findUserByEmail(email);
 
     if (!user) {
 
