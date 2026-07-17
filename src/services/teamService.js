@@ -3,8 +3,10 @@ const prisma = require("../lib/prisma");
 
 const TEAM_ROLES = [
     "Owner",
+    "Admin",
     "Manager",
     "Technician",
+    "Front Desk",
     "Receptionist",
 ];
 
