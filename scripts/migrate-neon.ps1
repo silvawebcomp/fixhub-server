@@ -1,10 +1,14 @@
 $ErrorActionPreference = "Stop"
 
-$rawUrl = Read-Host "Paste the Neon PostgreSQL URL"
+$rawUrl = Read-Host "Paste the full unmasked Neon PostgreSQL URL"
 $databaseUrl = $rawUrl.Trim().Trim('"').Trim("'")
 
 if ($databaseUrl -notmatch "^postgres(ql)?://") {
     throw "Invalid URL. It must start with postgresql:// or postgres://"
+}
+
+if ($databaseUrl -match "\*{3,}") {
+    throw "The database URL contains a masked password. Paste the full unmasked Neon connection string, not a value containing asterisks."
 }
 
 $directUrl = $databaseUrl -replace "-pooler(?=\.)", ""
