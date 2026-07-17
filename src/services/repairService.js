@@ -20,6 +20,86 @@ function repairInclude() {
     };
 }
 
+function isMissingSchemaError(error) {
+    return (
+        error?.code === "P2021" ||
+        error?.code === "P2022" ||
+        /table .* does not exist/i.test(error?.message || "") ||
+        /column .* does not exist/i.test(error?.message || "")
+    );
+}
+
+function normalizeLegacyRepair(repair) {
+    if (!repair) {
+        return null;
+    }
+
+    return {
+        id: repair.id,
+        ticketNumber: repair.ticketNumber || null,
+        customer: repair.customer,
+        customerPhone: repair.customerPhone || null,
+        customerEmail: repair.customerEmail || null,
+        device: repair.device,
+        deviceBrand: repair.deviceBrand || null,
+        deviceModel: repair.deviceModel || null,
+        serialNumber: repair.serialNumber || null,
+        issue: repair.issue || null,
+        status: repair.status,
+        priority: repair.priority || "Normal",
+        assignedTechnician: repair.assignedTechnician || null,
+        estimatedCost: repair.estimatedCost || null,
+        finalCost: repair.finalCost || null,
+        dueDate: repair.dueDate || null,
+        completedAt: repair.completedAt || null,
+        notes: repair.notes || null,
+        attachment: repair.attachment || null,
+        createdAt: repair.createdAt,
+        updatedAt: repair.updatedAt || repair.createdAt,
+        userId: repair.userId,
+        branchId: repair.branchId || null,
+        branch: null,
+        statusHistory: [],
+    };
+}
+
+async function getLegacyRepairs(userId) {
+    const repairs = await prisma.$queryRaw`
+        SELECT
+            "id",
+            "customer",
+            "device",
+            "status",
+            "notes",
+            "createdAt",
+            "userId"
+        FROM "Repair"
+        WHERE "userId" = ${userId}
+        ORDER BY "createdAt" DESC
+    `;
+
+    return repairs.map(normalizeLegacyRepair);
+}
+
+async function getLegacyRepair(id, userId) {
+    const repairs = await prisma.$queryRaw`
+        SELECT
+            "id",
+            "customer",
+            "device",
+            "status",
+            "notes",
+            "createdAt",
+            "userId"
+        FROM "Repair"
+        WHERE "id" = ${id}
+          AND "userId" = ${userId}
+        LIMIT 1
+    `;
+
+    return normalizeLegacyRepair(repairs[0]);
+}
+
 function branchFilter(branchId) {
     if (branchId === "" || branchId === null || branchId === undefined) {
         return {};
@@ -35,40 +115,72 @@ function branchFilter(branchId) {
 }
 
 async function getRepairs(userId, filters = {}) {
-    return prisma.repair.findMany({
-        where: {
-            userId,
-            ...branchFilter(filters.branchId),
-        },
-        include: repairInclude(),
-        orderBy: {
-            updatedAt: "desc",
-        },
-    });
+    try {
+        return await prisma.repair.findMany({
+            where: {
+                userId,
+                ...branchFilter(filters.branchId),
+            },
+            include: repairInclude(),
+            orderBy: {
+                updatedAt: "desc",
+            },
+        });
+    } catch (error) {
+        if (!isMissingSchemaError(error)) {
+            throw error;
+        }
+
+        return getLegacyRepairs(userId);
+    }
 }
 
 async function getRepair(id, userId) {
-    return prisma.repair.findFirst({
-        where: {
-            id,
-            userId,
-        },
-        include: repairInclude(),
-    });
+    try {
+        return await prisma.repair.findFirst({
+            where: {
+                id,
+                userId,
+            },
+            include: repairInclude(),
+        });
+    } catch (error) {
+        if (!isMissingSchemaError(error)) {
+            throw error;
+        }
+
+        return getLegacyRepair(id, userId);
+    }
 }
 
 async function repairExists(id, userId) {
-    return prisma.repair.findFirst({
-        where: {
-            id,
-            userId,
-        },
-        select: {
-            id: true,
-            status: true,
-            completedAt: true,
-        },
-    });
+    try {
+        return await prisma.repair.findFirst({
+            where: {
+                id,
+                userId,
+            },
+            select: {
+                id: true,
+                status: true,
+                completedAt: true,
+            },
+        });
+    } catch (error) {
+        if (!isMissingSchemaError(error)) {
+            throw error;
+        }
+
+        const repair = await getLegacyRepair(id, userId);
+
+        return repair
+            ? {
+                  id: repair.id,
+                  status: repair.status,
+                  completedAt: null,
+              }
+            : null;
+    }
 }
 
 async function createRepair(body, userId) {
