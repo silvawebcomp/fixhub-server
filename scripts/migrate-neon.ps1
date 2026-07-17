@@ -9,14 +9,39 @@ if ($databaseUrl -notmatch "^postgres(ql)?://") {
 
 $directUrl = $databaseUrl -replace "-pooler(?=\.)", ""
 
-$uri = [Uri]$directUrl
-Write-Host "Running migrations against host: $($uri.Host)"
-Write-Host "Database: $($uri.AbsolutePath.TrimStart('/'))"
+function Invoke-PrismaMigrate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Url,
 
-$env:DATABASE_URL = $directUrl
+        [Parameter(Mandatory = $true)]
+        [string]$Label
+    )
+
+    $uri = [Uri]$Url
+    Write-Host "Running migrations using $Label connection"
+    Write-Host "Host: $($uri.Host)"
+    Write-Host "Database: $($uri.AbsolutePath.TrimStart('/'))"
+
+    $env:DATABASE_URL = $Url
+    npx.cmd prisma migrate deploy
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Prisma migrate failed using $Label connection."
+    }
+}
 
 try {
-    npx.cmd prisma migrate deploy
+    try {
+        Invoke-PrismaMigrate -Url $directUrl -Label "direct"
+    } catch {
+        if ($databaseUrl -eq $directUrl) {
+            throw
+        }
+
+        Write-Warning "Direct Neon connection failed. Retrying with the original pooled URL..."
+        Invoke-PrismaMigrate -Url $databaseUrl -Label "pooled"
+    }
 } finally {
     Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
 }
