@@ -8,6 +8,13 @@ function cleanText(value) {
     return value.trim();
 }
 
+function isMissingBranchTable(error) {
+    return (
+        error?.code === "P2021" ||
+        /table .*Branch.* does not exist/i.test(error?.message || "")
+    );
+}
+
 function publicBranch(branch) {
     return {
         id: branch.id,
@@ -38,78 +45,102 @@ function normalizeBranch(data) {
 }
 
 async function ensureDefaultBranch(workspaceOwnerId) {
-    const existing = await prisma.branch.findFirst({
-        where: {
-            userId: workspaceOwnerId,
-            isDefault: true,
-        },
-    });
+    try {
+        const existing = await prisma.branch.findFirst({
+            where: {
+                userId: workspaceOwnerId,
+                isDefault: true,
+            },
+        });
 
-    if (existing) {
-        return existing;
+        if (existing) {
+            return existing;
+        }
+
+        return prisma.branch.create({
+            data: {
+                name: "Main Branch",
+                userId: workspaceOwnerId,
+                isDefault: true,
+            },
+        });
+    } catch (error) {
+        if (isMissingBranchTable(error)) {
+            return null;
+        }
+
+        throw error;
     }
-
-    return prisma.branch.create({
-        data: {
-            name: "Main Branch",
-            userId: workspaceOwnerId,
-            isDefault: true,
-        },
-    });
 }
 
 async function listBranches(workspaceOwnerId) {
-    await ensureDefaultBranch(workspaceOwnerId);
+    try {
+        await ensureDefaultBranch(workspaceOwnerId);
 
-    const branches = await prisma.branch.findMany({
-        where: {
-            userId: workspaceOwnerId,
-        },
-        orderBy: [
-            {
-                isDefault: "desc",
+        const branches = await prisma.branch.findMany({
+            where: {
+                userId: workspaceOwnerId,
             },
-            {
-                name: "asc",
-            },
-        ],
-    });
+            orderBy: [
+                {
+                    isDefault: "desc",
+                },
+                {
+                    name: "asc",
+                },
+            ],
+        });
 
-    return branches.map(publicBranch);
+        return branches.map(publicBranch);
+    } catch (error) {
+        if (isMissingBranchTable(error)) {
+            return [];
+        }
+
+        throw error;
+    }
 }
 
 async function createBranch(workspaceOwnerId, data) {
     const branch = normalizeBranch(data);
 
-    return prisma.$transaction(async (tx) => {
-        if (branch.isDefault) {
-            await tx.branch.updateMany({
+    try {
+        return await prisma.$transaction(async (tx) => {
+            if (branch.isDefault) {
+                await tx.branch.updateMany({
+                    where: {
+                        userId: workspaceOwnerId,
+                        isDefault: true,
+                    },
+                    data: {
+                        isDefault: false,
+                    },
+                });
+            }
+
+            const count = await tx.branch.count({
                 where: {
                     userId: workspaceOwnerId,
-                    isDefault: true,
-                },
-                data: {
-                    isDefault: false,
                 },
             });
+
+            const created = await tx.branch.create({
+                data: {
+                    ...branch,
+                    isDefault: branch.isDefault || count === 0,
+                    userId: workspaceOwnerId,
+                },
+            });
+
+            return publicBranch(created);
+        });
+    } catch (error) {
+        if (isMissingBranchTable(error)) {
+            throw new Error("Branch support is not available until the database migration is applied.");
         }
 
-        const count = await tx.branch.count({
-            where: {
-                userId: workspaceOwnerId,
-            },
-        });
-
-        const created = await tx.branch.create({
-            data: {
-                ...branch,
-                isDefault: branch.isDefault || count === 0,
-                userId: workspaceOwnerId,
-            },
-        });
-
-        return publicBranch(created);
-    });
+        throw error;
+    }
 }
 
 async function updateBranch(workspaceOwnerId, branchId, data) {
@@ -196,7 +227,7 @@ async function deleteBranch(workspaceOwnerId, branchId) {
 async function resolveBranchId(workspaceOwnerId, branchId) {
     if (branchId === "" || branchId === null || branchId === undefined) {
         const defaultBranch = await ensureDefaultBranch(workspaceOwnerId);
-        return defaultBranch.id;
+        return defaultBranch?.id || null;
     }
 
     const parsed = Number(branchId);
@@ -205,15 +236,25 @@ async function resolveBranchId(workspaceOwnerId, branchId) {
         throw new Error("Select a valid branch.");
     }
 
-    const branch = await prisma.branch.findFirst({
-        where: {
-            id: parsed,
-            userId: workspaceOwnerId,
-        },
-        select: {
-            id: true,
-        },
-    });
+    let branch;
+
+    try {
+        branch = await prisma.branch.findFirst({
+            where: {
+                id: parsed,
+                userId: workspaceOwnerId,
+            },
+            select: {
+                id: true,
+            },
+        });
+    } catch (error) {
+        if (isMissingBranchTable(error)) {
+            return null;
+        }
+
+        throw error;
+    }
 
     if (!branch) {
         throw new Error("Selected branch was not found.");
