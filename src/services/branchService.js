@@ -15,6 +15,46 @@ function isMissingBranchTable(error) {
     );
 }
 
+async function ensureBranchTable() {
+    await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Branch" (
+            "id" SERIAL PRIMARY KEY,
+            "name" TEXT NOT NULL,
+            "address" TEXT,
+            "phone" TEXT,
+            "managerName" TEXT,
+            "isDefault" BOOLEAN NOT NULL DEFAULT false,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "userId" INTEGER NOT NULL,
+            CONSTRAINT "Branch_userId_fkey"
+                FOREIGN KEY ("userId")
+                REFERENCES "User"("id")
+                ON DELETE RESTRICT
+                ON UPDATE CASCADE
+        )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE UNIQUE INDEX IF NOT EXISTS "Branch_userId_name_key"
+        ON "Branch"("userId", "name")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "Branch_userId_isDefault_idx"
+        ON "Branch"("userId", "isDefault")
+    `);
+}
+
+async function retryAfterBranchTableCreate(error, operation) {
+    if (!isMissingBranchTable(error)) {
+        throw error;
+    }
+
+    await ensureBranchTable();
+    return operation();
+}
+
 function publicBranch(branch) {
     return {
         id: branch.id,
@@ -45,7 +85,7 @@ function normalizeBranch(data) {
 }
 
 async function ensureDefaultBranch(workspaceOwnerId) {
-    try {
+    const operation = async () => {
         const existing = await prisma.branch.findFirst({
             where: {
                 userId: workspaceOwnerId,
@@ -64,17 +104,17 @@ async function ensureDefaultBranch(workspaceOwnerId) {
                 isDefault: true,
             },
         });
-    } catch (error) {
-        if (isMissingBranchTable(error)) {
-            return null;
-        }
+    };
 
-        throw error;
+    try {
+        return await operation();
+    } catch (error) {
+        return retryAfterBranchTableCreate(error, operation);
     }
 }
 
 async function listBranches(workspaceOwnerId) {
-    try {
+    const operation = async () => {
         await ensureDefaultBranch(workspaceOwnerId);
 
         const branches = await prisma.branch.findMany({
@@ -92,20 +132,20 @@ async function listBranches(workspaceOwnerId) {
         });
 
         return branches.map(publicBranch);
-    } catch (error) {
-        if (isMissingBranchTable(error)) {
-            return [];
-        }
+    };
 
-        throw error;
+    try {
+        return await operation();
+    } catch (error) {
+        return retryAfterBranchTableCreate(error, operation);
     }
 }
 
 async function createBranch(workspaceOwnerId, data) {
     const branch = normalizeBranch(data);
 
-    try {
-        return await prisma.$transaction(async (tx) => {
+    const operation = async () =>
+        prisma.$transaction(async (tx) => {
             if (branch.isDefault) {
                 await tx.branch.updateMany({
                     where: {
@@ -134,12 +174,11 @@ async function createBranch(workspaceOwnerId, data) {
 
             return publicBranch(created);
         });
-    } catch (error) {
-        if (isMissingBranchTable(error)) {
-            throw new Error("Branch support is not available until the database migration is applied.");
-        }
 
-        throw error;
+    try {
+        return await operation();
+    } catch (error) {
+        return retryAfterBranchTableCreate(error, operation);
     }
 }
 

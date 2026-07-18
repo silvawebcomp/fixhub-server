@@ -18,12 +18,53 @@ function cleanText(value) {
     return value.trim();
 }
 
+async function ensureTeamSchema() {
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "User"
+        ADD COLUMN IF NOT EXISTS "role" TEXT NOT NULL DEFAULT 'Owner'
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "User"
+        ADD COLUMN IF NOT EXISTS "workspaceOwnerId" INTEGER
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "User_role_idx"
+        ON "User"("role")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "User_workspaceOwnerId_idx"
+        ON "User"("workspaceOwnerId")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'User_workspaceOwnerId_fkey'
+            ) THEN
+                ALTER TABLE "User"
+                ADD CONSTRAINT "User_workspaceOwnerId_fkey"
+                FOREIGN KEY ("workspaceOwnerId")
+                REFERENCES "User"("id")
+                ON DELETE SET NULL
+                ON UPDATE CASCADE;
+            END IF;
+        END
+        $$;
+    `);
+}
+
 function publicUser(user) {
     return {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: user.role || "Owner",
         createdAt: user.createdAt,
         isOwner: !user.workspaceOwnerId,
     };
@@ -36,6 +77,8 @@ function validateRole(role) {
 }
 
 async function listTeam(workspaceOwnerId) {
+    await ensureTeamSchema();
+
     const users = await prisma.user.findMany({
         where: {
             OR: [
@@ -61,6 +104,8 @@ async function listTeam(workspaceOwnerId) {
 }
 
 async function createTeamMember(workspaceOwnerId, data) {
+    await ensureTeamSchema();
+
     const name = cleanText(data.name);
     const email = cleanText(data.email).toLowerCase();
     const password = cleanText(data.password);
@@ -115,6 +160,8 @@ async function updateTeamMember(
     memberId,
     data
 ) {
+    await ensureTeamSchema();
+
     const role = cleanText(data.role);
 
     validateRole(role);
@@ -146,6 +193,8 @@ async function deleteTeamMember(
     workspaceOwnerId,
     memberId
 ) {
+    await ensureTeamSchema();
+
     return prisma.user.deleteMany({
         where: {
             id: Number(memberId),
