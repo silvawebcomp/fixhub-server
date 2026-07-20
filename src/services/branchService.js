@@ -8,14 +8,16 @@ function cleanText(value) {
     return value.trim();
 }
 
-function isMissingBranchTable(error) {
+function isMissingBranchSchema(error) {
     return (
         error?.code === "P2021" ||
-        /table .*Branch.* does not exist/i.test(error?.message || "")
+        error?.code === "P2022" ||
+        /table .*Branch.* does not exist/i.test(error?.message || "") ||
+        /column .*branchId.* does not exist/i.test(error?.message || "")
     );
 }
 
-async function ensureBranchTable() {
+async function ensureBranchSchema() {
     await prisma.$executeRawUnsafe(`
         CREATE TABLE IF NOT EXISTS "Branch" (
             "id" SERIAL PRIMARY KEY,
@@ -44,14 +46,119 @@ async function ensureBranchTable() {
         CREATE INDEX IF NOT EXISTS "Branch_userId_isDefault_idx"
         ON "Branch"("userId", "isDefault")
     `);
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Repair"
+        ADD COLUMN IF NOT EXISTS "branchId" INTEGER
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Inventory"
+        ADD COLUMN IF NOT EXISTS "branchId" INTEGER
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "Repair_userId_branchId_idx"
+        ON "Repair"("userId", "branchId")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "Inventory_userId_branchId_idx"
+        ON "Inventory"("userId", "branchId")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        INSERT INTO "Branch" ("name", "userId", "isDefault", "createdAt", "updatedAt")
+        SELECT 'Main Branch', "id", true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        FROM "User"
+        ON CONFLICT ("userId", "name") DO NOTHING
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        UPDATE "Repair" AS r
+        SET "branchId" = b."id"
+        FROM "Branch" AS b
+        WHERE r."branchId" IS NULL
+          AND r."userId" = b."userId"
+          AND b."isDefault" = true
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        UPDATE "Inventory" AS i
+        SET "branchId" = b."id"
+        FROM "Branch" AS b
+        WHERE i."branchId" IS NULL
+          AND i."userId" = b."userId"
+          AND b."isDefault" = true
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        UPDATE "Repair" AS r
+        SET "branchId" = NULL
+        WHERE r."branchId" IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM "Branch" AS b
+              WHERE b."id" = r."branchId"
+          )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        UPDATE "Inventory" AS i
+        SET "branchId" = NULL
+        WHERE i."branchId" IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM "Branch" AS b
+              WHERE b."id" = i."branchId"
+          )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'Repair_branchId_fkey'
+                  AND conrelid = '"Repair"'::regclass
+            ) THEN
+                ALTER TABLE "Repair"
+                ADD CONSTRAINT "Repair_branchId_fkey"
+                FOREIGN KEY ("branchId")
+                REFERENCES "Branch"("id")
+                ON DELETE SET NULL
+                ON UPDATE CASCADE;
+            END IF;
+        END $$;
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'Inventory_branchId_fkey'
+                  AND conrelid = '"Inventory"'::regclass
+            ) THEN
+                ALTER TABLE "Inventory"
+                ADD CONSTRAINT "Inventory_branchId_fkey"
+                FOREIGN KEY ("branchId")
+                REFERENCES "Branch"("id")
+                ON DELETE SET NULL
+                ON UPDATE CASCADE;
+            END IF;
+        END $$;
+    `);
 }
 
-async function retryAfterBranchTableCreate(error, operation) {
-    if (!isMissingBranchTable(error)) {
+async function retryAfterBranchSchemaRepair(error, operation) {
+    if (!isMissingBranchSchema(error)) {
         throw error;
     }
 
-    await ensureBranchTable();
+    await ensureBranchSchema();
     return operation();
 }
 
@@ -85,6 +192,8 @@ function normalizeBranch(data) {
 }
 
 async function ensureDefaultBranch(workspaceOwnerId) {
+    await ensureBranchSchema();
+
     const operation = async () => {
         const existing = await prisma.branch.findFirst({
             where: {
@@ -109,7 +218,7 @@ async function ensureDefaultBranch(workspaceOwnerId) {
     try {
         return await operation();
     } catch (error) {
-        return retryAfterBranchTableCreate(error, operation);
+        return retryAfterBranchSchemaRepair(error, operation);
     }
 }
 
@@ -137,11 +246,13 @@ async function listBranches(workspaceOwnerId) {
     try {
         return await operation();
     } catch (error) {
-        return retryAfterBranchTableCreate(error, operation);
+        return retryAfterBranchSchemaRepair(error, operation);
     }
 }
 
 async function createBranch(workspaceOwnerId, data) {
+    await ensureBranchSchema();
+
     const branch = normalizeBranch(data);
 
     const operation = async () =>
@@ -178,11 +289,13 @@ async function createBranch(workspaceOwnerId, data) {
     try {
         return await operation();
     } catch (error) {
-        return retryAfterBranchTableCreate(error, operation);
+        return retryAfterBranchSchemaRepair(error, operation);
     }
 }
 
 async function updateBranch(workspaceOwnerId, branchId, data) {
+    await ensureBranchSchema();
+
     const branch = normalizeBranch(data);
 
     const existing = await prisma.branch.findFirst({
@@ -227,6 +340,8 @@ async function updateBranch(workspaceOwnerId, branchId, data) {
 }
 
 async function deleteBranch(workspaceOwnerId, branchId) {
+    await ensureBranchSchema();
+
     const existing = await prisma.branch.findFirst({
         where: {
             id: Number(branchId),
@@ -264,6 +379,8 @@ async function deleteBranch(workspaceOwnerId, branchId) {
 }
 
 async function resolveBranchId(workspaceOwnerId, branchId) {
+    await ensureBranchSchema();
+
     if (branchId === "" || branchId === null || branchId === undefined) {
         const defaultBranch = await ensureDefaultBranch(workspaceOwnerId);
         return defaultBranch?.id || null;
@@ -288,7 +405,7 @@ async function resolveBranchId(workspaceOwnerId, branchId) {
             },
         });
     } catch (error) {
-        if (isMissingBranchTable(error)) {
+        if (isMissingBranchSchema(error)) {
             return null;
         }
 
@@ -309,4 +426,5 @@ module.exports = {
     deleteBranch,
     resolveBranchId,
     ensureDefaultBranch,
+    ensureBranchSchema,
 };
