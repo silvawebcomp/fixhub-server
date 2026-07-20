@@ -45,6 +45,131 @@ function itemInclude() {
     };
 }
 
+async function ensureInventorySchema() {
+    await branchService.ensureBranchSchema();
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Inventory"
+        ADD COLUMN IF NOT EXISTS "sku" TEXT
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Inventory"
+        ADD COLUMN IF NOT EXISTS "category" TEXT
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Inventory"
+        ADD COLUMN IF NOT EXISTS "supplier" TEXT
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Inventory"
+        ADD COLUMN IF NOT EXISTS "location" TEXT
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Inventory"
+        ADD COLUMN IF NOT EXISTS "reorderLevel" INTEGER NOT NULL DEFAULT 0
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Inventory"
+        ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "Inventory_userId_category_idx"
+        ON "Inventory"("userId", "category")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "Inventory_userId_sku_idx"
+        ON "Inventory"("userId", "sku")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "StockMovement" (
+            "id" SERIAL PRIMARY KEY,
+            "inventoryId" INTEGER NOT NULL,
+            "userId" INTEGER NOT NULL,
+            "type" TEXT NOT NULL,
+            "quantity" INTEGER NOT NULL,
+            "previousQty" INTEGER NOT NULL,
+            "newQty" INTEGER NOT NULL,
+            "unitCost" DOUBLE PRECISION,
+            "reason" TEXT,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "StockMovement_inventoryId_createdAt_idx"
+        ON "StockMovement"("inventoryId", "createdAt")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "StockMovement_userId_createdAt_idx"
+        ON "StockMovement"("userId", "createdAt")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        DELETE FROM "StockMovement" AS sm
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM "Inventory" AS i
+            WHERE i."id" = sm."inventoryId"
+        )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        DELETE FROM "StockMovement" AS sm
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM "User" AS u
+            WHERE u."id" = sm."userId"
+        )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'StockMovement_inventoryId_fkey'
+                  AND conrelid = '"StockMovement"'::regclass
+            ) THEN
+                ALTER TABLE "StockMovement"
+                ADD CONSTRAINT "StockMovement_inventoryId_fkey"
+                FOREIGN KEY ("inventoryId")
+                REFERENCES "Inventory"("id")
+                ON DELETE CASCADE
+                ON UPDATE CASCADE;
+            END IF;
+        END $$;
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'StockMovement_userId_fkey'
+                  AND conrelid = '"StockMovement"'::regclass
+            ) THEN
+                ALTER TABLE "StockMovement"
+                ADD CONSTRAINT "StockMovement_userId_fkey"
+                FOREIGN KEY ("userId")
+                REFERENCES "User"("id")
+                ON DELETE RESTRICT
+                ON UPDATE CASCADE;
+            END IF;
+        END $$;
+    `);
+}
+
 function branchFilter(branchId) {
     if (branchId === "" || branchId === null || branchId === undefined) {
         return {};
@@ -79,6 +204,8 @@ function normalizeItem(data) {
 }
 
 async function getInventory(userId, filters = {}) {
+    await ensureInventorySchema();
+
     return prisma.inventory.findMany({
         where: {
             userId,
@@ -92,6 +219,8 @@ async function getInventory(userId, filters = {}) {
 }
 
 async function getInventorySummary(userId, filters = {}) {
+    await ensureInventorySchema();
+
     const items = await prisma.inventory.findMany({
         where: {
             userId,
@@ -128,6 +257,8 @@ async function getInventorySummary(userId, filters = {}) {
 }
 
 async function createInventoryItem(data, userId) {
+    await ensureInventorySchema();
+
     const item = normalizeItem(data);
     const branchId = await branchService.resolveBranchId(userId, data.branchId);
 
@@ -163,6 +294,8 @@ async function createInventoryItem(data, userId) {
 }
 
 async function updateInventoryItem(id, userId, data) {
+    await ensureInventorySchema();
+
     const item = normalizeItem(data);
     const branchId = await branchService.resolveBranchId(userId, data.branchId);
 
@@ -213,6 +346,8 @@ async function updateInventoryItem(id, userId, data) {
 }
 
 async function adjustInventoryItem(id, userId, data) {
+    await ensureInventorySchema();
+
     const type = cleanText(data.type);
     const quantity = parseInteger(data.quantity, "Movement quantity", {
         minimum: 1,
@@ -288,6 +423,8 @@ async function adjustInventoryItem(id, userId, data) {
 }
 
 async function deleteInventoryItem(id, userId) {
+    await ensureInventorySchema();
+
     return prisma.inventory.deleteMany({
         where: {
             id,
@@ -304,4 +441,5 @@ module.exports = {
     updateInventoryItem,
     adjustInventoryItem,
     deleteInventoryItem,
+    ensureInventorySchema,
 };
