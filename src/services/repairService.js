@@ -29,6 +29,91 @@ function isMissingSchemaError(error) {
     );
 }
 
+async function ensureRepairSchema() {
+    await branchService.ensureBranchSchema();
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Repair"
+        ADD COLUMN IF NOT EXISTS "ticketNumber" TEXT,
+        ADD COLUMN IF NOT EXISTS "customerPhone" TEXT,
+        ADD COLUMN IF NOT EXISTS "customerEmail" TEXT,
+        ADD COLUMN IF NOT EXISTS "deviceBrand" TEXT,
+        ADD COLUMN IF NOT EXISTS "deviceModel" TEXT,
+        ADD COLUMN IF NOT EXISTS "serialNumber" TEXT,
+        ADD COLUMN IF NOT EXISTS "issue" TEXT,
+        ADD COLUMN IF NOT EXISTS "priority" TEXT NOT NULL DEFAULT 'Normal',
+        ADD COLUMN IF NOT EXISTS "assignedTechnician" TEXT,
+        ADD COLUMN IF NOT EXISTS "estimatedCost" DOUBLE PRECISION,
+        ADD COLUMN IF NOT EXISTS "finalCost" DOUBLE PRECISION,
+        ADD COLUMN IF NOT EXISTS "dueDate" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS "attachment" TEXT
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE UNIQUE INDEX IF NOT EXISTS "Repair_ticketNumber_key"
+        ON "Repair"("ticketNumber")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "Repair_userId_branchId_idx"
+        ON "Repair"("userId", "branchId")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "RepairStatusHistory" (
+            "id" SERIAL PRIMARY KEY,
+            "status" TEXT NOT NULL,
+            "note" TEXT,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "repairId" INTEGER NOT NULL
+        )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "RepairStatusHistory"
+        ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'Received',
+        ADD COLUMN IF NOT EXISTS "note" TEXT,
+        ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS "repairId" INTEGER
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "RepairStatusHistory_repairId_createdAt_idx"
+        ON "RepairStatusHistory"("repairId", "createdAt")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'RepairStatusHistory_repairId_fkey'
+                  AND conrelid = '"RepairStatusHistory"'::regclass
+            ) THEN
+                ALTER TABLE "RepairStatusHistory"
+                ADD CONSTRAINT "RepairStatusHistory_repairId_fkey"
+                FOREIGN KEY ("repairId") REFERENCES "Repair"("id")
+                ON DELETE CASCADE ON UPDATE CASCADE;
+            END IF;
+        END
+        $$;
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        INSERT INTO "RepairStatusHistory" ("status", "createdAt", "repairId")
+        SELECT COALESCE("status", 'Received'), COALESCE("createdAt", CURRENT_TIMESTAMP), "id"
+        FROM "Repair" repair
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM "RepairStatusHistory" history
+            WHERE history."repairId" = repair."id"
+        )
+    `);
+}
+
 function normalizeLegacyRepair(repair) {
     if (!repair) {
         return null;
@@ -115,6 +200,8 @@ function branchFilter(branchId) {
 }
 
 async function getRepairs(userId, filters = {}) {
+    await ensureRepairSchema();
+
     try {
         return await prisma.repair.findMany({
             where: {
@@ -136,6 +223,8 @@ async function getRepairs(userId, filters = {}) {
 }
 
 async function getRepair(id, userId) {
+    await ensureRepairSchema();
+
     try {
         return await prisma.repair.findFirst({
             where: {
@@ -154,6 +243,8 @@ async function getRepair(id, userId) {
 }
 
 async function repairExists(id, userId) {
+    await ensureRepairSchema();
+
     try {
         return await prisma.repair.findFirst({
             where: {
@@ -184,6 +275,8 @@ async function repairExists(id, userId) {
 }
 
 async function createRepair(body, userId) {
+    await ensureRepairSchema();
+
     const repairData = validateRepair(body);
     const branchId = await branchService.resolveBranchId(userId, body.branchId);
 
@@ -212,6 +305,8 @@ async function createRepair(body, userId) {
 }
 
 async function updateRepair(id, body, userId) {
+    await ensureRepairSchema();
+
     const repairData = validateRepair(body);
     const branchId = await branchService.resolveBranchId(userId, body.branchId);
 
@@ -260,6 +355,8 @@ async function updateRepair(id, body, userId) {
 }
 
 async function deleteRepair(id, userId) {
+    await ensureRepairSchema();
+
     const existing = await repairExists(id, userId);
 
     if (!existing) {
@@ -282,4 +379,5 @@ module.exports = {
     createRepair,
     updateRepair,
     deleteRepair,
+    ensureRepairSchema,
 };

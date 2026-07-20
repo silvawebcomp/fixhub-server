@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const prisma = require("../lib/prisma");
+const repairService = require("./repairService");
 
 const PAYMENT_METHODS = [
     "Cash",
@@ -138,7 +139,148 @@ function invoiceInclude() {
     };
 }
 
+async function ensureInvoiceSchema() {
+    await repairService.ensureRepairSchema();
+
+    await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Invoice" (
+            "id" SERIAL PRIMARY KEY,
+            "invoiceNumber" TEXT NOT NULL,
+            "repairId" INTEGER NOT NULL,
+            "userId" INTEGER NOT NULL,
+            "labourCost" DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "partsCost" DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "discount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "tax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "subtotal" DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "total" DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "amountPaid" DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "balance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+            "paymentMethod" TEXT,
+            "paymentStatus" TEXT NOT NULL DEFAULT 'Pending',
+            "notes" TEXT,
+            "attachment" TEXT,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Invoice"
+        ADD COLUMN IF NOT EXISTS "invoiceNumber" TEXT,
+        ADD COLUMN IF NOT EXISTS "repairId" INTEGER,
+        ADD COLUMN IF NOT EXISTS "userId" INTEGER,
+        ADD COLUMN IF NOT EXISTS "labourCost" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "partsCost" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "discount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "tax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "subtotal" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "total" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "amountPaid" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "balance" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "paymentMethod" TEXT,
+        ADD COLUMN IF NOT EXISTS "paymentStatus" TEXT NOT NULL DEFAULT 'Pending',
+        ADD COLUMN IF NOT EXISTS "notes" TEXT,
+        ADD COLUMN IF NOT EXISTS "attachment" TEXT,
+        ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "InvoiceItem" (
+            "id" SERIAL PRIMARY KEY,
+            "invoiceId" INTEGER NOT NULL,
+            "description" TEXT NOT NULL,
+            "quantity" INTEGER NOT NULL,
+            "unitPrice" DOUBLE PRECISION NOT NULL,
+            "total" DOUBLE PRECISION NOT NULL
+        )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Payment" (
+            "id" SERIAL PRIMARY KEY,
+            "invoiceId" INTEGER NOT NULL,
+            "amount" DOUBLE PRECISION NOT NULL,
+            "method" TEXT NOT NULL,
+            "reference" TEXT,
+            "notes" TEXT,
+            "paidAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE UNIQUE INDEX IF NOT EXISTS "Invoice_invoiceNumber_key"
+        ON "Invoice"("invoiceNumber")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE UNIQUE INDEX IF NOT EXISTS "Invoice_repairId_key"
+        ON "Invoice"("repairId")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "Invoice_userId_createdAt_idx"
+        ON "Invoice"("userId", "createdAt")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "InvoiceItem_invoiceId_idx"
+        ON "InvoiceItem"("invoiceId")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "Payment_invoiceId_paidAt_idx"
+        ON "Payment"("invoiceId", "paidAt")
+    `);
+
+    await prisma.$executeRawUnsafe(`
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'Invoice_repairId_fkey'
+                  AND conrelid = '"Invoice"'::regclass
+            ) THEN
+                ALTER TABLE "Invoice"
+                ADD CONSTRAINT "Invoice_repairId_fkey"
+                FOREIGN KEY ("repairId") REFERENCES "Repair"("id")
+                ON DELETE CASCADE ON UPDATE CASCADE;
+            END IF;
+
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'InvoiceItem_invoiceId_fkey'
+                  AND conrelid = '"InvoiceItem"'::regclass
+            ) THEN
+                ALTER TABLE "InvoiceItem"
+                ADD CONSTRAINT "InvoiceItem_invoiceId_fkey"
+                FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id")
+                ON DELETE CASCADE ON UPDATE CASCADE;
+            END IF;
+
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'Payment_invoiceId_fkey'
+                  AND conrelid = '"Payment"'::regclass
+            ) THEN
+                ALTER TABLE "Payment"
+                ADD CONSTRAINT "Payment_invoiceId_fkey"
+                FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id")
+                ON DELETE CASCADE ON UPDATE CASCADE;
+            END IF;
+        END
+        $$;
+    `);
+}
+
 async function createInvoice(userId, data) {
+    await ensureInvoiceSchema();
+
     const repairId = Number(data.repairId);
 
     if (!Number.isInteger(repairId)) {
@@ -222,6 +364,8 @@ async function createInvoice(userId, data) {
 }
 
 async function getInvoices(userId) {
+    await ensureInvoiceSchema();
+
     try {
         return await prisma.invoice.findMany({
             where: {
@@ -242,6 +386,8 @@ async function getInvoices(userId) {
 }
 
 async function getInvoice(userId, id) {
+    await ensureInvoiceSchema();
+
     return prisma.invoice.findFirst({
         where: {
             id: Number(id),
@@ -252,6 +398,8 @@ async function getInvoice(userId, id) {
 }
 
 async function addPayment(userId, invoiceId, data) {
+    await ensureInvoiceSchema();
+
     const amount = toMoney(data.amount);
     const method = cleanText(data.method);
     const paidAt = data.paidAt ? new Date(data.paidAt) : new Date();
@@ -310,6 +458,8 @@ async function addPayment(userId, invoiceId, data) {
 }
 
 async function deleteInvoice(userId, id) {
+    await ensureInvoiceSchema();
+
     const deleted = await prisma.invoice.deleteMany({
         where: {
             id: Number(id),
@@ -327,4 +477,5 @@ module.exports = {
     getInvoice,
     addPayment,
     deleteInvoice,
+    ensureInvoiceSchema,
 };
