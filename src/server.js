@@ -22,6 +22,7 @@ const invoiceRoutes = require("./routes/invoiceRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const teamRoutes = require("./routes/teamRoutes");
 const branchRoutes = require("./routes/branchRoutes");
+const feedbackRoutes = require("./routes/feedbackRoutes");
 const healthRoutes = require("./routes/healthRoutes");
 const requestId = require("./middleware/requestId");
 const gracefulShutdown = require("./middleware/gracefulShutdown");
@@ -88,6 +89,7 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/team", teamRoutes);
 app.use("/api/branches", branchRoutes);
+app.use("/api/feedback", feedbackRoutes);
 app.use("/health", healthRoutes);
 app.use(notFound);
 

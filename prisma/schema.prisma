@@ -227,3 +227,23 @@ model AuditLog {
   @@index([userId, createdAt])
   @@index([entity, entityId])
 }
+
+model BetaFeedback {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  authorId       Int?
+  authorName     String?
+  authorEmail    String?
+  category       String   @default("General")
+  rating         Int?
+  message        String
+  page           String?
+  status         String   @default("New")
+  contactConsent Boolean  @default(false)
+  userAgent      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+
+  @@index([userId, status, createdAt])
+  @@index([authorId, createdAt])
+}
