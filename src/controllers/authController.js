@@ -42,7 +42,49 @@ async function login(req, res) {
     }
 }
 
+async function requestPasswordReset(req, res) {
+    try {
+        const {
+            email,
+        } = req.body;
+
+        const result = await authService.requestPasswordReset({
+            email,
+        });
+
+        return res.json(result);
+    } catch (error) {
+        return res.status(400).json({
+            message: error.message,
+        });
+    }
+}
+
+async function resetPassword(req, res) {
+    try {
+        const {
+            email,
+            code,
+            password,
+        } = req.body;
+
+        const result = await authService.resetPassword({
+            email,
+            code,
+            password,
+        });
+
+        return res.json(result);
+    } catch (error) {
+        return res.status(400).json({
+            message: error.message,
+        });
+    }
+}
+
 module.exports = {
     register: asyncHandler(register),
     login: asyncHandler(login),
+    requestPasswordReset: asyncHandler(requestPasswordReset),
+    resetPassword: asyncHandler(resetPassword),
 };

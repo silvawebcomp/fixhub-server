@@ -25,9 +25,26 @@ model User {
   notifications NotificationLog[]
   stockMovements StockMovement[]
   auditLogs AuditLog[]
+  passwordResetCodes PasswordResetCode[]
 
   @@index([workspaceOwnerId])
   @@index([role])
+}
+
+model PasswordResetCode {
+  id        Int       @id @default(autoincrement())
+  email     String
+  codeHash  String
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, createdAt])
+  @@index([email, expiresAt])
 }
 
 model Branch {
